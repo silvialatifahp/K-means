@@ -3,43 +3,64 @@ library(shinydashboard)
 
 shinyServer(
   function(input, output, session) {
-    #DATAUJI
-    ujikmeans <- reactive({
-      input$data_uji
+    df_kmeans <- reactive({
+      req(input$path_df_kmeans)
+      read_excel(input$path_df_kmeans$datapath)
     })
-    #KETERANGAN KMEANS
-    output$tablekmeans <- renderDataTable({
-      req(ujikmeans())
-      uji <- read_xlsx(ujikmeans()$datapath)
-      datatable(uji, options = list (scrollx=TRUE))
+
+    output$df_kmeans <- DT::renderDataTable({
+      datatable(df_kmeans(),
+        options = list(scrollx = TRUE)
+      )
     })
-    
-    #PLOT
-    dvalidkm <- reactive({
-      input$data_valid
+
+    observe({
+      updateSelectInput(
+        session = session,
+        inputId = "var1",
+        choices = colnames(df_kmeans())
+      )
+
+      updateSelectInput(
+        session = session,
+        inputId = "var2",
+        choices = colnames(df_kmeans())
+      )
     })
-    output$tablevalidkm <- renderDataTable({
-      req(dvalidkm())
-      valid <- read_xlsx(dvalidkm()$datapath)
-      datatable()
+
+    df_kmeans_selected <- eventReactive(input$analyse, {
+      req(input$var1)
+      req(input$var2)
+      df_kmeans()[, c(input$var1, input$var2), drop = FALSE]
     })
-    
-    #P
-    selectedData <- reactive({
-      ujikmeans()[, c(input$var1, input$var2)]
+
+    res_clusters <- reactive({
+      req(df_kmeans_selected())
+      req(input$n_clusters)
+      kmeans(
+        df_kmeans_selected(),
+        centers = input$n_clusters
+      )
     })
-    clusters <- reactive({
-      kmeans(selectedData(), input$clusters)
-    })
-    
+
     output$plot1 <- renderPlot({
-      palette(c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
-                "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999"))
+      req(df_kmeans_selected())
+      req(res_clusters())
+      palette(c(
+        "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
+        "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999"
+      ))
       par(mar = c(5.1, 4.1, 0, 1))
-      plot(selectedData(),
-           col = clusters()$cluster,
-           pch = 20, cex = 1)
-      points(cluster()$centers, pch=4, cex = 1, lwd = 3)
+      plot(df_kmeans_selected(),
+        col = res_clusters()$cluster,
+        pch = 20,
+        cex = 1
+      )
+      points(res_clusters()$centers,
+        pch = 4,
+        cex = 1,
+        lwd = 3
+      )
     })
-  } #function
-) #shinyserver
+  }
+)
