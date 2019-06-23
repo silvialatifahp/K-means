@@ -34,7 +34,7 @@ shinyServer(
       df_kmeans()[, c(input$var1, input$var2), drop = FALSE]
     })
 
-    res_clusters <- reactive({
+    res_clusters <- eventReactive(input$analyse,{
       req(df_kmeans_selected())
       req(input$n_clusters)
       kmeans(
