@@ -48,9 +48,9 @@ shinyUI(
         tabItem(
           tabName = "kmeans",
           fluidRow(
-            box(
+            shinydashboard::box(
               width = 12,
-              fileInput("path_df_kmeans",
+              fileInput("path_df_raw",
                 "Unggah file(.xlsx)",
                 multiple = TRUE,
                 accept = c(
@@ -66,7 +66,7 @@ shinyUI(
               tabPanel(
                 "Data Uji",
                 br(),
-                DT::dataTableOutput("df_kmeans")
+                DT::dataTableOutput("df_raw")
               ),
               tabPanel(
                 "K-means",
@@ -93,7 +93,10 @@ shinyUI(
                       "Analisis"
                     )
                   ),
-                  mainPanel(plotOutput("plot1"))
+                  mainPanel(
+                    plotOutput("plot_kmeans"),
+                    DT::dataTableOutput("df_kmeans")
+                  )
                 )
               )
             )

@@ -3,13 +3,13 @@ library(shinydashboard)
 
 shinyServer(
   function(input, output, session) {
-    df_kmeans <- reactive({
-      req(input$path_df_kmeans)
-      read_excel(input$path_df_kmeans$datapath)
+    df_raw <- reactive({
+      req(input$path_df_raw)
+      read_excel(input$path_df_raw$datapath)
     })
 
-    output$df_kmeans <- DT::renderDataTable({
-      datatable(df_kmeans(),
+    output$df_raw <- DT::renderDataTable({
+      datatable(df_raw(),
         options = list(scrollx = TRUE)
       )
     })
@@ -18,40 +18,40 @@ shinyServer(
       updateSelectInput(
         session = session,
         inputId = "var1",
-        choices = colnames(df_kmeans())
+        choices = colnames(df_raw())
       )
 
       updateSelectInput(
         session = session,
         inputId = "var2",
-        choices = colnames(df_kmeans())
+        choices = colnames(df_raw())
       )
     })
 
-    df_kmeans_selected <- eventReactive(input$analyse, {
+    df_raw_selected <- eventReactive(input$analyse, {
       req(input$var1)
       req(input$var2)
-      df_kmeans()[, c(input$var1, input$var2), drop = FALSE]
+      df_raw()[, c(input$var1, input$var2), drop = FALSE]
     })
 
     res_clusters <- eventReactive(input$analyse,{
-      req(df_kmeans_selected())
+      req(df_raw_selected())
       req(input$n_clusters)
       kmeans(
-        df_kmeans_selected(),
+        df_raw_selected(),
         centers = input$n_clusters
       )
     })
 
-    output$plot1 <- renderPlot({
-      req(df_kmeans_selected())
+    output$plot_kmeans <- renderPlot({
+      req(df_raw_selected())
       req(res_clusters())
       palette(c(
         "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
         "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999"
       ))
       par(mar = c(5.1, 4.1, 0, 1))
-      plot(df_kmeans_selected(),
+      plot(df_raw_selected(),
         col = res_clusters()$cluster,
         pch = 20,
         cex = 1
@@ -61,6 +61,13 @@ shinyServer(
         cex = 1,
         lwd = 3
       )
+    })
+    
+    output$df_kmeans <- DT::renderDataTable({
+      req(df_raw_selected())
+      req(res_clusters())
+      df_kmeans <- cbind(df_raw_selected(), Klaster = res_clusters()$cluster)
+      datatable(df_kmeans[order(df_kmeans$Klaster), ], rownames = FALSE)
     })
   }
 )
