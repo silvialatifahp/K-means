@@ -95,6 +95,10 @@ shinyUI(
                   ),
                   mainPanel(
                     plotOutput("plot_kmeans"),
+                    downloadButton("download_plot", "Unduh grafik"),
+                    br(),
+                    hr(),
+                    br(),
                     DT::dataTableOutput("df_kmeans")
                   )
                 )
