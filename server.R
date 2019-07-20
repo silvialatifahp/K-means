@@ -1,5 +1,6 @@
 library(shiny)
 library(shinydashboard)
+library(ggplot2)
 
 shinyServer(
   function(input, output, session) {
@@ -28,76 +29,48 @@ shinyServer(
       )
     })
 
-    df_raw_selected <- eventReactive(input$analyse, {
-      req(input$var1)
-      req(input$var2)
-      df_raw()[, c(input$var1, input$var2), drop = FALSE]
-    })
-
     res_clusters <- eventReactive(input$analyse, {
-      req(df_raw_selected())
-      req(input$n_clusters)
-      kmeans(
-        df_raw_selected(),
+      req(
+        df_raw(),
+        input$var1,
+        input$var2,
+        input$n_clusters
+      )
+
+      res_kmeans <- kmeans(df_raw()[, c(input$var1, input$var2), drop = FALSE],
         centers = input$n_clusters
+      )
+      cbind(df_raw()[, c(input$var1, input$var2), drop = FALSE],
+        Klaster = as.character(res_kmeans$cluster)
       )
     })
 
     plot_kmeans <- reactive({
-      req(df_raw_selected())
       req(res_clusters())
-      palette(c(
-        "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
-        "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999"
-      ))
-      par(mar = c(5.1, 4.1, 0, 1))
-      plot(df_raw_selected(),
-        col = res_clusters()$cluster,
-        pch = 20,
-        cex = 1
-      )
-      points(res_clusters()$centers,
-        pch = 4,
-        cex = 1,
-        lwd = 3
-      )
+
+      ggplot(
+        res_clusters(),
+        aes_string(x = input$var1, y = input$var2, colour = "Klaster")
+      ) +
+        geom_point() +
+        scale_colour_manual(values = c(
+          "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
+          "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999"
+        )) +
+        theme_light()
     })
 
     output$plot_kmeans <- renderPlot({
       plot_kmeans()
     })
 
-    df_kmeans <- reactive({
-      req(df_raw_selected())
-      req(res_clusters())
-      df_kmeans <- cbind(df_raw_selected(), Klaster = res_clusters()$cluster)
-      df_kmeans[order(df_kmeans$Klaster), ]
-    })
-
     output$df_kmeans <- DT::renderDataTable({
-      datatable(df_kmeans(), rownames = FALSE)
+      req(res_clusters())
+      datatable(res_clusters()[order(res_clusters()$Klaster), ], rownames = FALSE)
     })
 
     output$download_plot <- downloadHandler(filename = "plot_kmeans.png", content = function(file) {
-      grDevices::png(file)
-      req(df_raw_selected())
-      req(res_clusters())
-      palette(c(
-        "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
-        "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999"
-      ))
-      par(mar = c(5.1, 4.1, 0, 1))
-      plot(df_raw_selected(),
-        col = res_clusters()$cluster,
-        pch = 20,
-        cex = 1
-      )
-      points(res_clusters()$centers,
-        pch = 4,
-        cex = 1,
-        lwd = 3
-      )
-      dev.off()
+      ggsave(file, plot = plot_kmeans())
     }, contentType = "image/png")
   }
 )
